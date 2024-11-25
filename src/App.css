@@ -1,0 +1,32 @@
+body {
+  font-family: "Comic Neue", cursive;
+  margin: 0px;
+  border: 0px;
+  background-image: url("2.png");
+}
+
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(5deg);
+  }
+  50% {
+    transform: rotate(-5deg);
+  }
+  75% {
+    transform: rotate(5deg);
+  }
+}
+
+.hover-cursor {
+  cursor: pointer;
+}
+
+.wiggle-text {
+  display: inline-block;
+  font-size: 24px;
+  animation: wiggle 0.8s ease-in-out infinite;
+}
