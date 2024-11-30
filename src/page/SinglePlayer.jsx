@@ -99,7 +99,7 @@ export default function SinglePlayer() {
           <h2 id="score" style={{ margin: "20px 40px" }}>
             Score: {score}
           </h2>
-        </div>
+        </div>  
         {gameOver && (
           <div style={{ textAlign: "center", marginTop: "20px" }}>
             <h2>Game Over! Final Score: {score}</h2>

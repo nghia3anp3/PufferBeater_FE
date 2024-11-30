@@ -17,15 +17,6 @@ export default function HomePage() {
     fontFamily: "Comic Neue, cursive",
   };
 
-  const handleMultiPlayerClick = () => {
-    const playerName = localStorage.getItem("username");
-    if (playerName) {
-      navigate(`/loading?playerName=${encodeURIComponent(playerName)}`);
-    } else {
-      alert("Please log in first.");
-    }
-  };
-
   return (
     <>
       <h1
@@ -59,7 +50,7 @@ export default function HomePage() {
         </div>
         <div style={styleDescription}>
           <Button
-            onClick={handleMultiPlayerClick}
+            onClick={() => navigate("/loading")}
             style={styleButton}
             className="wiggle-text"
           >

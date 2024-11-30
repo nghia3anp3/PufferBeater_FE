@@ -35,25 +35,22 @@ const inputStyle = {
 };
 
 export default function NavBar() {
-  const [open, setOpen] = useState(false);
-  const [username, setUsername] = useState("");
-  const [buttonText, setButtonText] = useState("Log In");
+  const [ws, setWs] = useState(null);
   const navigate = useNavigate();
 
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
-
-  const handleLoginSubmit = () => {
-    setButtonText(username);
-    handleClose();
-    localStorage.setItem("username", username);
+  const handleNavigation = () => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "disconnect", username }));
+      ws.close(); // Explicitly close the WebSocket connection
+    }
+    navigate("/");
   };
 
   return (
     <Box sx={navBarStyles}>
       <Typography
         className="hover-cursor"
-        onClick={() => navigate("/")}
+        onClick={handleNavigation}
         sx={{
           flexGrow: 1,
           textAlign: "center",
@@ -63,50 +60,6 @@ export default function NavBar() {
       >
         Puffer Typer
       </Typography>
-      <Typography
-        className="hover-cursor"
-        sx={{ fontFamily: "Comic Neue, cursive", fontSize: "1.75rem" }}
-      >
-        <Button
-          onClick={handleOpen}
-          className="hover-cursor"
-          sx={{ fontFamily: "Comic Neue, cursive", fontSize: "1.75rem" }}
-          color="black"
-        >
-          {buttonText} {/* Display current button text */}
-        </Button>
-      </Typography>
-      <Modal
-        open={open}
-        onClose={handleClose}
-        aria-labelledby="modal-modal-title"
-        aria-describedby="modal-modal-description"
-      >
-        <Box sx={modalStyle}>
-          <Typography
-            sx={{ fontFamily: "Comic Neue, cursive" }}
-            id="modal-modal-title"
-            variant="h6"
-            component="h2"
-          >
-            Username:
-            <input
-              type="text"
-              style={inputStyle}
-              value={username}
-              onChange={(e) => setUsername(e.target.value)} // Update username state on input change
-            />
-          </Typography>
-          <Button
-            variant="contained"
-            onClick={handleLoginSubmit}
-            sx={{ marginTop: "16px" }}
-            disabled={!username} // Disable if no name is entered
-          >
-            Submit
-          </Button>
-        </Box>
-      </Modal>
     </Box>
   );
 }

@@ -1,172 +1,161 @@
-import React, { useEffect, useState } from "react";
-import SinglePlayer from "./SinglePlayer"; // Adjust the import path as necessary
-import { Box, Modal, Button, Typography } from "@mui/material";
+import { TextField } from "@mui/material";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 
 export default function MultiPlayer() {
-  const [player1Score, setPlayer1Score] = useState(0);
-  const [player2Score, setPlayer2Score] = useState(0);
+  const { gameId } = useParams(); // To identify the game session
+  const [playerNumber, setPlayerNumber] = useState(null); // Player 1 or Player 2
+  const [word, setWord] = useState("");
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [userInput, setUserInput] = useState("");
   const [gameOver, setGameOver] = useState(false);
-  const [winner, setWinner] = useState("");
-  const [gameId, setGameId] = useState(""); // State for Game ID
-  const [ws, setWs] = useState(null);
+  const [score, setScore] = useState(0); // Player's own score
+  const [opponentScore, setOpponentScore] = useState(0); // Opponent's score
+  const [ws, setWs] = useState(null); // WebSocket connection
 
-  const [player1Connected, setPlayer1Connected] = useState(false);
-  const [player2Connected, setPlayer2Connected] = useState(false);
+  const fetchData = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/random-words");
+      const randomWords = await response.json();
+      const selectedWord =
+        randomWords[Math.floor(Math.random() * randomWords.length)];
+      setWord(selectedWord.word);
+      setTimeLeft(5); // Set default timer for multiplayer
+      setGameOver(false);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  const handleInputChange = (event) => {
+    setUserInput(event.target.value);
+
+    if (event.target.value === word) {
+      setScore((prevScore) => {
+        const newScore = prevScore + 1;
+
+        // Notify server of score update
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(
+            JSON.stringify({
+              type: "scoreUpdate",
+              playerNumber,
+              score: newScore,
+            })
+          );
+        }
+
+        return newScore;
+      });
+
+      startNewWord();
+    }
+  };
+
+  const startNewWord = async () => {
+    await fetchData();
+    setUserInput("");
+    setTimeLeft(5); // Reset timer for new word
+    setGameOver(false);
+  };
 
   useEffect(() => {
-    // Establish WebSocket connection
-    const websocket = new WebSocket("ws://localhost:8080"); // Adjust if your server is hosted elsewhere
+    if (timeLeft === 0) {
+      setGameOver(true);
+    }
+  }, [timeLeft]);
 
-    websocket.onopen = () => {
-      console.log("Connected to the WebSocket server");
+  useEffect(() => {
+    if (timeLeft > 0) {
+      const timer = setInterval(() => {
+        setTimeLeft((prevTime) => prevTime - 1);
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [timeLeft]);
+
+  useEffect(() => {
+    fetchData();
+
+    // Initialize WebSocket connection
+    const socket = new WebSocket("ws://localhost:8080");
+    setWs(socket);
+
+    socket.onopen = () => {
+      console.log("WebSocket connected");
     };
 
-    websocket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+    socket.onmessage = (event) => {
+      const message = JSON.parse(event.data);
 
-      // Handle player connection messages
-      if (data.type === "playerAssigned") {
-        if (data.playerNumber === 1) {
-          setPlayer1Connected(true);
-        } else if (data.playerNumber === 2) {
-          setPlayer2Connected(true);
+      if (message.type === "playerAssigned") {
+        setPlayerNumber(message.playerNumber); // Assign Player 1 or Player 2
+        console.log(`Assigned as Player ${message.playerNumber}`);
+      }
+
+      if (message.type === "scoreUpdate") {
+        console.log("Received score update:", message);
+        if (message.playerNumber === playerNumber) {
+          // Update the current player's score
+          setScore(message.score);
+        } else {
+          // Update the opponent's score
+          setOpponentScore(message.score);
         }
       }
-
-      // Update connection status when a player connects
-      if (data.type === "playerConnected") {
-        if (data.playerNumber === 1) {
-          setPlayer1Connected(true);
-        } else if (data.playerNumber === 2) {
-          setPlayer2Connected(true);
-        }
-      }
-
-      // Handle score updates and game results
-      if (data.type === "scoreUpdate") {
-        setPlayer1Score(data.player1Score);
-        setPlayer2Score(data.player2Score);
-      } else if (data.type === "gameResult") {
-        setWinner(data.winner);
-        setGameOver(true);
-      }
-
-      // Handle game start message and provide Game ID
-      if (data.type === "gameStart") {
-        setGameId(data.gameId); // Set Game ID when game starts
-        console.log(`Game started with ID: ${data.gameId}`);
-      }
     };
 
-    websocket.onclose = () => {
-      console.log("Disconnected from the WebSocket server");
+    socket.onclose = () => {
+      console.log("WebSocket connection closed");
     };
-
-    setWs(websocket);
 
     return () => {
-      websocket.close(); // Clean up on unmount
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.close();
+      }
     };
-  }, []);
-
-  const handleGameOver = (score1, score2) => {
-    setPlayer1Score(score1);
-    setPlayer2Score(score2);
-    determineWinner(score1, score2);
-
-    // Send game results to other players via WebSocket
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      const resultMessage = JSON.stringify({
-        type: "gameResult",
-        gameId,
-        player1Score: score1,
-        player2Score: score2,
-        winner:
-          score1 > score2 ? "Player 1" : score2 > score1 ? "Player 2" : "Tie",
-      });
-      ws.send(resultMessage);
-    }
-  };
-
-  const determineWinner = (score1, score2) => {
-    if (score1 > score2) {
-      setWinner("Player 1 Wins!");
-    } else if (score2 > score1) {
-      setWinner("Player 2 Wins!");
-    } else {
-      setWinner("It's a Tie!");
-    }
-  };
+  }, [gameId, playerNumber]);
 
   return (
-    <Box
-      sx={{
+    <div
+      style={{
         display: "flex",
-        justifyContent: "space-between",
+        flexDirection: "column",
         alignItems: "center",
-        height: "100vh",
-        padding: "20px",
       }}
     >
-      <Box
-        sx={{
-          flex: 1,
-          borderRight: "2px solid #ccc",
-          padding: "20px",
+      <h3>Type the given word within 5 seconds</h3>
+      <h1 style={{ fontSize: "4rem" }}>{word}</h1>
+      <TextField
+        label="Start typing..."
+        variant="outlined"
+        value={userInput}
+        onChange={handleInputChange}
+        disabled={gameOver}
+      />
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <h2 style={{ margin: "20px 40px" }}>Time left: {timeLeft}</h2>
+        <h2 style={{ margin: "20px 40px" }}>Me: {score}</h2>
+        <h2 style={{ margin: "20px 40px" }}>Opponent: {opponentScore}</h2>
+      </div>
+      {gameOver && (
+        <div style={{ textAlign: "center", marginTop: "20px" }}>
+          <h2>Game Over! Final Score: {score}</h2>
+          <button onClick={startNewWord}>Start New Word</button>
+        </div>
+      )}
+      <div
+        style={{
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
+          marginTop: "40px",
         }}
       >
-        <h2>Player 1</h2>
-        <SinglePlayer
-          onGameOver={(score) => handleGameOver(score, player2Score)}
-          gameId={gameId}
-          disabled={!player1Connected} // Disable until connected
-        />
-        <Typography variant="subtitle1">
-          {player1Connected ? "Connected" : "Waiting for Player 1..."}
-        </Typography>
-      </Box>
-
-      <Box
-        sx={{
-          flex: 1,
-          padding: "20px",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-        }}
-      >
-        <h2>Player 2</h2>
-        <SinglePlayer
-          onGameOver={(score) => handleGameOver(player1Score, score)}
-          gameId={gameId}
-          disabled={!player2Connected} // Disable until connected
-        />
-        <Typography variant="subtitle1">
-          {player2Connected ? "Connected" : "Waiting for Player 2..."}
-        </Typography>
-      </Box>
-
-      <Modal open={gameOver} onClose={() => setGameOver(false)}>
-        <Box
-          sx={{
-            padding: 4,
-            backgroundColor: "white",
-            borderRadius: "8px",
-            boxShadow: "0px 0px 10px rgba(0,0,0,0.5)",
-          }}
-        >
-          <h2>{winner}</h2>
-          <p>Player 1 Score: {player1Score}</p>
-          <p>Player 2 Score: {player2Score}</p>
-          <Typography variant="h6">Game ID: {gameId}</Typography>
-          <Button variant="contained" onClick={() => window.location.reload()}>
-            Play Again
-          </Button>
-        </Box>
-      </Modal>
-    </Box>
+        <h2>Instructions</h2>
+        <h4>Type each word in the given amount of time to score</h4>
+      </div>
+    </div>
   );
 }
