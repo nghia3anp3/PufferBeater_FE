@@ -1,5 +1,5 @@
 import { io } from "socket.io-client";
 
-const URL = "http://localhost:5000";
-
-export const socket = io(URL);
+export const socket = io("http://localhost:5000", {
+  transports: ["websocket"], // Ensure WebSocket is explicitly used
+});

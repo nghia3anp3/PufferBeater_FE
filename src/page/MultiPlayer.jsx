@@ -1,4 +1,4 @@
-import { TextField } from "@mui/material";
+import { Button, TextField } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
@@ -142,7 +142,12 @@ export default function MultiPlayer() {
       {gameOver && (
         <div style={{ textAlign: "center", marginTop: "20px" }}>
           <h2>Game Over! Final Score: {score}</h2>
-          <button onClick={startNewWord}>Start New Word</button>
+          <Button variant="contained" onClick={startNewWord}>
+            Leave
+          </Button>
+          <Button variant="contained" onClick={startNewWord}>
+            Start New Word
+          </Button>
         </div>
       )}
       <div
