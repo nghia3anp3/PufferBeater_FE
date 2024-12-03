@@ -11,7 +11,7 @@ function App() {
   const navigate = useNavigate();
 
   const handleGameStart = (gameId) => {
-    navigate(`/multiplayer/${gameId}`);
+    navigate(`/multiplayer/${gameId}`); // Navigate to multiplayer page with game ID
   };
 
   return (

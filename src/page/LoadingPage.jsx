@@ -1,80 +1,60 @@
 import { useEffect, useState } from "react";
 import { Box, Button, Typography } from "@mui/material";
-import io from "socket.io-client";
 import { useNavigate } from "react-router-dom";
-
-const SERVER_URL = "http://localhost:5000";
+import { initializeWebSocket, closeWebSocket } from "../socket"; // WebSocket manager
 
 export default function LoadingPage() {
   const [socket, setSocket] = useState(null);
-  const [statusText, setStatusText] = useState({
-    player1: "Player 1 not connected",
-    player2: "Player 2 not connected",
+  const [status, setStatus] = useState({
+    player1: false,
+    player2: false,
   });
-  const [bothPlayersConnected, setBothPlayersConnected] = useState(false);
+  const [playerNumber, setPlayerNumber] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Initialize socket connection
-    const newSocket = io(SERVER_URL);
-    setSocket(newSocket);
+    const socketInstance = initializeWebSocket();
 
-    // Listen for player status updates
-    newSocket.on("playerStatus", (statuses) => {
-      setStatusText({
-        player1: statuses.player1
-          ? "Player 1 connected"
-          : "Player 1 not connected",
-        player2: statuses.player2
-          ? "Player 2 connected"
-          : "Player 2 not connected",
-      });
-
-      // Enable "Start" button only if both players are connected
-      setBothPlayersConnected(statuses.player1 && statuses.player2);
+    socketInstance.on("sessionIdAssigned", ({ sessionId }) => {
+      console.log(`Session ID received: ${sessionId}`);
+      localStorage.setItem("sessionId", sessionId); // Store session ID locally
     });
 
-    // Listen for gameStart event from the server
-    newSocket.on("gameStart", (data) => {
-      console.log("Game started with ID:", data.gameId);
-      navigate(`/multiplayer/${data.gameId}`); // Navigate to multiplayer route with gameId
+    socketInstance.on("playerStatus", (statuses) => {
+      setStatus(statuses);
     });
 
-    // Handle server disconnection
-    newSocket.on("disconnect", () => {
-      console.log("Disconnected from server.");
-      setStatusText({
-        player1: "Player 1 not connected",
-        player2: "Player 2 not connected",
-      });
-      setBothPlayersConnected(false); // Disable "Start" button
+    socketInstance.on("playerAssigned", (data) => {
+      setPlayerNumber(data.playerNumber);
     });
 
-    // Cleanup listeners and disconnect on component unmount
+    socketInstance.on("gameStart", (data) => {
+      navigate(`/multiplayer/${data.gameId}`);
+    });
+
+    setSocket(socketInstance);
+
     return () => {
-      newSocket.disconnect();
+      socketInstance.off("sessionIdAssigned");
+      socketInstance.off("playerStatus");
+      socketInstance.off("playerAssigned");
+      socketInstance.off("gameStart");
+      closeWebSocket();
     };
   }, [navigate]);
 
   const handleStartGame = () => {
     if (socket) {
-      console.log("Start Game button clicked.");
-      socket.emit("startGame"); // Notify backend to start the game
+      socket.emit("startGame");
     }
   };
 
-  const handleDisconnect = () => {
+  const handleLeave = () => {
     if (socket) {
-      console.log("Disconnect button clicked.");
-      socket.disconnect(); // Explicitly disconnect from the server
-      setSocket(null);
-      setStatusText({
-        player1: "Player 1 not connected",
-        player2: "Player 2 not connected",
-      });
-      setBothPlayersConnected(false);
-      navigate("/"); // Route back to the home page
+      socket.emit("playerLeave");
+      closeWebSocket();
     }
+    navigate("/");
   };
 
   return (
@@ -90,23 +70,27 @@ export default function LoadingPage() {
       <Typography variant="h4" gutterBottom>
         Waiting for Players...
       </Typography>
-      <Typography variant="h6">{statusText.player1}</Typography>
-      <Typography variant="h6">{statusText.player2}</Typography>
+      <Typography variant="h6">
+        {status.player1 ? "Player 1 connected" : "Player 1 not connected"}
+      </Typography>
+      <Typography variant="h6">
+        {status.player2 ? "Player 2 connected" : "Player 2 not connected"}
+      </Typography>
       <Button
         variant="contained"
         onClick={handleStartGame}
-        disabled={!bothPlayersConnected} // Only enable when both players are connected
+        disabled={!status.player1 || !status.player2}
         sx={{ margin: "10px" }}
       >
-        Start
+        Start Game
       </Button>
       <Button
         variant="contained"
         color="secondary"
-        onClick={handleDisconnect} // Disconnect and route back
+        onClick={handleLeave}
         sx={{ margin: "10px" }}
       >
-        Disconnect
+        Leave
       </Button>
     </Box>
   );

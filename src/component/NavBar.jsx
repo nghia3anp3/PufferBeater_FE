@@ -35,23 +35,11 @@ const inputStyle = {
 };
 
 export default function NavBar() {
-  const [ws, setWs] = useState(null);
-  const navigate = useNavigate();
-
-  const handleNavigation = () => {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: "disconnect", username }));
-      ws.close(); // Explicitly close the WebSocket connection
-    }
-    navigate("/");
-  };
-
   return (
     <Box sx={navBarStyles}>
       <Typography
-        className="hover-cursor"
-        onClick={handleNavigation}
         sx={{
+          userSelect: "none",
           flexGrow: 1,
           textAlign: "center",
           fontSize: "2rem",

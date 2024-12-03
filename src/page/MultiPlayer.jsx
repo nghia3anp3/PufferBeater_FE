@@ -1,29 +1,32 @@
 import { Button, TextField } from "@mui/material";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { initializeWebSocket, closeWebSocket } from "../socket";
 
 export default function MultiPlayer() {
-  const { gameId } = useParams(); // To identify the game session
-  const [playerNumber, setPlayerNumber] = useState(null); // Player 1 or Player 2
+  const { gameId } = useParams();
+  const [playerNumber, setPlayerNumber] = useState(null);
   const [word, setWord] = useState("");
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(5);
   const [userInput, setUserInput] = useState("");
   const [gameOver, setGameOver] = useState(false);
-  const [score, setScore] = useState(0); // Player's own score
-  const [opponentScore, setOpponentScore] = useState(0); // Opponent's score
-  const [ws, setWs] = useState(null); // WebSocket connection
+  const [score, setScore] = useState(0);
+  const [opponentScore, setOpponentScore] = useState(0);
+  const [replayCount, setReplayCount] = useState(0); // Tracker for rematch requests
+  const [socket, setSocket] = useState(null);
+  const navigate = useNavigate();
 
-  const fetchData = async () => {
+  const fetchWord = async () => {
     try {
       const response = await fetch("http://localhost:5000/random-words");
-      const randomWords = await response.json();
-      const selectedWord =
-        randomWords[Math.floor(Math.random() * randomWords.length)];
+      const data = await response.json();
+      const selectedWord = data[Math.floor(Math.random() * data.length)];
       setWord(selectedWord.word);
-      setTimeLeft(5); // Set default timer for multiplayer
+      setTimeLeft(5);
+      setUserInput("");
       setGameOver(false);
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error fetching word:", error);
     }
   };
 
@@ -34,88 +37,84 @@ export default function MultiPlayer() {
       setScore((prevScore) => {
         const newScore = prevScore + 1;
 
-        // Notify server of score update
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(
-            JSON.stringify({
-              type: "scoreUpdate",
-              playerNumber,
-              score: newScore,
-            })
-          );
+        if (socket) {
+          socket.emit("scoreUpdate", { playerNumber, score: newScore });
         }
 
         return newScore;
       });
 
-      startNewWord();
+      fetchWord();
     }
   };
 
-  const startNewWord = async () => {
-    await fetchData();
-    setUserInput("");
-    setTimeLeft(5); // Reset timer for new word
-    setGameOver(false);
-  };
+  useEffect(() => {
+    const socketInstance = initializeWebSocket();
+
+    socketInstance.on("playerAssigned", (data) => {
+      setPlayerNumber(data.playerNumber);
+    });
+
+    socketInstance.on("scoreUpdate", (data) => {
+      if (data.playerNumber !== playerNumber) {
+        setOpponentScore(data.score);
+      }
+    });
+
+    socketInstance.on("replayStatus", (data) => {
+      setReplayCount(data.replayCount); // Update tracker for rematch requests
+    });
+
+    socketInstance.on("gameRestart", () => {
+      setScore(0);
+      setOpponentScore(0);
+      setReplayCount(0); // Reset replay count
+      fetchWord();
+    });
+
+    socketInstance.on("playerLeave", () => {
+      alert("Your opponent has left the game.");
+      closeWebSocket();
+      navigate("/"); // Navigate both players to the home page
+    });
+
+    setSocket(socketInstance);
+
+    return () => {
+      socketInstance.off("playerAssigned");
+      socketInstance.off("scoreUpdate");
+      socketInstance.off("replayStatus");
+      socketInstance.off("gameRestart");
+      socketInstance.off("playerLeave");
+      closeWebSocket();
+    };
+  }, [playerNumber, navigate]);
 
   useEffect(() => {
-    if (timeLeft === 0) {
+    if (timeLeft > 0) {
+      const timer = setTimeout(() => {
+        setTimeLeft((prevTime) => prevTime - 1);
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    } else {
       setGameOver(true);
     }
   }, [timeLeft]);
 
-  useEffect(() => {
-    if (timeLeft > 0) {
-      const timer = setInterval(() => {
-        setTimeLeft((prevTime) => prevTime - 1);
-      }, 1000);
-
-      return () => clearInterval(timer);
+  const handleLeave = () => {
+    if (socket) {
+      socket.emit("playerLeave");
+      closeWebSocket();
     }
-  }, [timeLeft]);
+    navigate("/");
+  };
 
-  useEffect(() => {
-    fetchData();
-
-    // Initialize WebSocket connection
-    const socket = new WebSocket("ws://localhost:8080");
-    setWs(socket);
-
-    socket.onopen = () => {
-      console.log("WebSocket connected");
-    };
-
-    socket.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-
-      if (message.type === "playerAssigned") {
-        setPlayerNumber(message.playerNumber); // Assign Player 1 or Player 2
-        console.log(`Assigned as Player ${message.playerNumber}`);
-      }
-
-      if (message.type === "scoreUpdate") {
-        console.log("Received score update:", message);
-        if (message.playerNumber === playerNumber) {
-          // Update the current player's score
-          setScore(message.score);
-        } else {
-          // Update the opponent's score
-          setOpponentScore(message.score);
-        }
-      }
-    };
-
-    socket.onclose = () => {
-      console.log("WebSocket connection closed");
-    };
-
-    return () => {
-      if (socket.readyState === WebSocket.OPEN) {
-        socket.close();
-      }
-    };
-  }, [gameId, playerNumber]);
+  const handleReplayRequest = () => {
+    if (socket) {
+      socket.emit("playerReplay"); // Notify server of rematch request
+    }
+  };
 
   return (
     <div
@@ -123,31 +122,51 @@ export default function MultiPlayer() {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
+        padding: "20px",
       }}
     >
-      <h3>Type the given word within 5 seconds</h3>
-      <h1 style={{ fontSize: "4rem" }}>{word}</h1>
+      <h3>Type the given word within {timeLeft} seconds</h3>
+      <h1 style={{ fontSize: "4rem", marginBottom: "20px" }}>{word}</h1>
       <TextField
         label="Start typing..."
         variant="outlined"
         value={userInput}
         onChange={handleInputChange}
         disabled={gameOver}
+        style={{ marginBottom: "20px", width: "300px" }}
       />
-      <div style={{ display: "flex", justifyContent: "center" }}>
-        <h2 style={{ margin: "20px 40px" }}>Time left: {timeLeft}</h2>
-        <h2 style={{ margin: "20px 40px" }}>Me: {score}</h2>
-        <h2 style={{ margin: "20px 40px" }}>Opponent: {opponentScore}</h2>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          marginBottom: "20px",
+        }}
+      >
+        <h2 style={{ margin: "0 40px" }}>Time left: {timeLeft}</h2>
+        <h2 style={{ margin: "0 40px" }}>Your Score: {score}</h2>
+        <h2 style={{ margin: "0 40px" }}>Opponent Score: {opponentScore}</h2>
       </div>
       {gameOver && (
         <div style={{ textAlign: "center", marginTop: "20px" }}>
           <h2>Game Over! Final Score: {score}</h2>
-          <Button variant="contained" onClick={startNewWord}>
-            Leave
-          </Button>
-          <Button variant="contained" onClick={startNewWord}>
-            Start New Word
-          </Button>
+          <div>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={handleLeave}
+              style={{ margin: "10px" }}
+            >
+              Leave Game
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleReplayRequest}
+              style={{ margin: "10px" }}
+            >
+              Request Replay
+            </Button>
+            <p>{replayCount}/2 players want a rematch</p>
+          </div>
         </div>
       )}
       <div
@@ -159,7 +178,7 @@ export default function MultiPlayer() {
         }}
       >
         <h2>Instructions</h2>
-        <h4>Type each word in the given amount of time to score</h4>
+        <h4>Type each word correctly within the given time to score points!</h4>
       </div>
     </div>
   );
