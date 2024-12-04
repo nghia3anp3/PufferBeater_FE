@@ -6,7 +6,8 @@ import { initializeWebSocket, closeWebSocket } from "../socket";
 export default function MultiPlayer() {
   const { gameId } = useParams();
   const [playerNumber, setPlayerNumber] = useState(null);
-  const [word, setWord] = useState("");
+  const [wordList, setWordList] = useState("");
+  const [currentWord, setCurrentWord] = useState("");
   const [timeLeft, setTimeLeft] = useState(5);
   const [userInput, setUserInput] = useState("");
   const [gameOver, setGameOver] = useState(false);
@@ -20,8 +21,12 @@ export default function MultiPlayer() {
     try {
       const response = await fetch("http://localhost:5000/random-words");
       const data = await response.json();
-      const selectedWord = data[Math.floor(Math.random() * data.length)];
-      setWord(selectedWord.word);
+      if (data && data.length > 0) {
+        const words = data.map((item) => item.word);
+        setWordList(words.word); // Save words in state
+        setCurrentWord(words[0]);
+      }
+
       setTimeLeft(5);
       setUserInput("");
       setGameOver(false);
@@ -30,10 +35,14 @@ export default function MultiPlayer() {
     }
   };
 
+  useEffect(() => {
+    fetchWord();
+  }, []);
+
   const handleInputChange = (event) => {
     setUserInput(event.target.value);
 
-    if (event.target.value === word) {
+    if (event.target.value === currentWord) {
       setScore((prevScore) => {
         const newScore = prevScore + 1;
 
@@ -126,7 +135,7 @@ export default function MultiPlayer() {
       }}
     >
       <h3>Type the given word within {timeLeft} seconds</h3>
-      <h1 style={{ fontSize: "4rem", marginBottom: "20px" }}>{word}</h1>
+      <h1 style={{ fontSize: "4rem", marginBottom: "20px" }}>{currentWord}</h1>
       <TextField
         label="Start typing..."
         variant="outlined"
