@@ -1,6 +1,7 @@
 import { Button, TextField } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
+const BACKEND_URL = import.meta.env.VITE_APP_BACKEND_URL;
 
 // Get me from BE
 export default function SinglePlayer() {
@@ -16,7 +17,7 @@ export default function SinglePlayer() {
 
   const fetchData = async () => {
     try {
-      const response = await fetch("http://localhost:5000/random-words");
+      const response = await fetch(`${BACKEND_URL}/random-words`);
       const randomWords = await response.json();
       const selectedWord =
         randomWords[Math.floor(Math.random() * randomWords.length)];

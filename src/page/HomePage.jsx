@@ -23,7 +23,6 @@ export default function HomePage() {
         style={{
           display: "flex",
           justifyContent: "center",
-          margin: 0,
           padding: "80px 0px",
           margin: "0px 50px",
           fontSize: "70px",

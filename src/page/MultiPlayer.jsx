@@ -15,11 +15,13 @@ export default function MultiPlayer() {
   const [replayCount, setReplayCount] = useState(0); // Tracker for rematch requests
   const [socket, setSocket] = useState(null);
 
+  const BACKEND_URL = import.meta.env.VITE_APP_BACKEND_URL;
+
   const navigate = useNavigate();
 
   const fetchWord = async () => {
     try {
-      const response = await fetch("http://localhost:5000/random-words");
+      const response = await fetch(`${BACKEND_URL}/random-words`);
       const data = await response.json();
       if (data && data.length > 0) {
         const words = data.map((item) => item.word);

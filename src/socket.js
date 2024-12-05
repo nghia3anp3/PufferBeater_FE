@@ -1,10 +1,10 @@
 import { io } from "socket.io-client";
-
+const BACKEND_URL = import.meta.env.VITE_APP_BACKEND_URL;
 let socket = null;
 
 export const initializeWebSocket = () => {
   if (!socket) {
-    socket = io("http://localhost:5000", { transports: ["websocket"] });
+    socket = io(`${BACKEND_URL}`, { transports: ["websocket"] });
 
     // Connection event
     socket.on("connect", () => {
