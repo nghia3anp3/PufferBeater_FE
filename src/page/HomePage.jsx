@@ -25,6 +25,7 @@ export default function HomePage() {
           justifyContent: "center",
           margin: 0,
           padding: "80px 0px",
+          margin: "0px 50px",
           fontSize: "70px",
           userSelect: "none",
         }}
@@ -32,7 +33,13 @@ export default function HomePage() {
       >
         Select a mode to start
       </h1>
-      <div style={{ display: "flex", justifyContent: "space-around" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-around",
+          width: "100%",
+        }}
+      >
         <div style={styleDescription}>
           <Button
             onClick={() => navigate("/difficulty")}
@@ -42,10 +49,10 @@ export default function HomePage() {
             Single player
           </Button>
           <h2>
-            Lorem ipsum dolor sit amet consectetur, adipisicing elit. Sit odit
-            corrupti, molestias quam reiciendis laborum iusto inventore
-            accusantium enim, incidunt magnam odio sunt? Consequuntur, quod.
-            Libero et reiciendis iure error.
+            Singleplayer mode lets you test and improve your typing skills at
+            your own pace. Race against the clock to type as many words as
+            possible and aim for a high score through 3 different difficulties.
+            Perfect for practicing speed and accuracy while having fun!
           </h2>
         </div>
         <div style={styleDescription}>
@@ -58,10 +65,10 @@ export default function HomePage() {
           </Button>
 
           <h2>
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Reiciendis,
-            sunt minus harum tenetur voluptates debitis illo natus,
-            necessitatibus exercitationem deleniti ratione. Amet nemo ab
-            voluptatum dignissimos ex aspernatur atque odit.
+            Multiplayer mode brings the excitement of competition! Each player
+            gets 30 seconds to type as many words as possible. The player with
+            the highest score at the end wins. Show off your speed and accuracy
+            to claim victory!
           </h2>
         </div>
       </div>

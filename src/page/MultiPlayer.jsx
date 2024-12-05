@@ -1,20 +1,20 @@
 import { Button, TextField } from "@mui/material";
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { initializeWebSocket, closeWebSocket } from "../socket";
 
 export default function MultiPlayer() {
-  const { gameId } = useParams();
   const [playerNumber, setPlayerNumber] = useState(null);
   const [wordList, setWordList] = useState("");
   const [currentWord, setCurrentWord] = useState("");
-  const [timeLeft, setTimeLeft] = useState(5);
+  const [timeLeft, setTimeLeft] = useState(30); // Initialize timeLeft
   const [userInput, setUserInput] = useState("");
   const [gameOver, setGameOver] = useState(false);
   const [score, setScore] = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
   const [replayCount, setReplayCount] = useState(0); // Tracker for rematch requests
   const [socket, setSocket] = useState(null);
+
   const navigate = useNavigate();
 
   const fetchWord = async () => {
@@ -23,11 +23,9 @@ export default function MultiPlayer() {
       const data = await response.json();
       if (data && data.length > 0) {
         const words = data.map((item) => item.word);
-        setWordList(words.word); // Save words in state
+        setWordList(words.word);
         setCurrentWord(words[0]);
       }
-
-      setTimeLeft(5);
       setUserInput("");
       setGameOver(false);
     } catch (error) {
@@ -37,6 +35,7 @@ export default function MultiPlayer() {
 
   useEffect(() => {
     fetchWord();
+    setGameOver(false);
   }, []);
 
   const handleInputChange = (event) => {
@@ -62,6 +61,11 @@ export default function MultiPlayer() {
 
     socketInstance.on("playerAssigned", (data) => {
       setPlayerNumber(data.playerNumber);
+
+      if (data.playerNumber && playerNumber) {
+        console.log("Emitting startGame event...");
+        socketInstance.emit("startGame");
+      }
     });
 
     socketInstance.on("scoreUpdate", (data) => {
@@ -77,7 +81,7 @@ export default function MultiPlayer() {
     socketInstance.on("gameRestart", () => {
       setScore(0);
       setOpponentScore(0);
-      setReplayCount(0); // Reset replay count
+      setReplayCount(0);
       fetchWord();
     });
 
@@ -85,6 +89,25 @@ export default function MultiPlayer() {
       alert("Your opponent has left the game.");
       closeWebSocket();
       navigate("/"); // Navigate both players to the home page
+    });
+
+    // Handle real-time timer updates
+    socketInstance.on("timeUpdate", ({ remainingTime }) => {
+      console.log(`Time update received: ${remainingTime}`); // Debug log
+      setTimeLeft(remainingTime); // Update the time left in real-time
+    });
+
+    // Handle game over event
+    socketInstance.on("gameOver", ({ player1Score, player2Score }) => {
+      console.log("Game over event received:", { player1Score, player2Score });
+      setGameOver(true);
+      if (playerNumber === 1) {
+        setScore(player1Score); // Your score if you're Player 1
+        setOpponentScore(player2Score); // Opponent's score if you're Player 1
+      } else if (playerNumber === 2) {
+        setScore(player2Score); // Your score if you're Player 2
+        setOpponentScore(player1Score); // Opponent's score if you're Player 2
+      }
     });
 
     setSocket(socketInstance);
@@ -95,21 +118,11 @@ export default function MultiPlayer() {
       socketInstance.off("replayStatus");
       socketInstance.off("gameRestart");
       socketInstance.off("playerLeave");
+      socketInstance.off("timeUpdate");
+      socketInstance.off("gameOver");
       closeWebSocket();
     };
   }, [playerNumber, navigate]);
-
-  useEffect(() => {
-    if (timeLeft > 0) {
-      const timer = setTimeout(() => {
-        setTimeLeft((prevTime) => prevTime - 1);
-      }, 1000);
-
-      return () => clearTimeout(timer);
-    } else {
-      setGameOver(true);
-    }
-  }, [timeLeft]);
 
   const handleLeave = () => {
     if (socket) {
@@ -134,8 +147,12 @@ export default function MultiPlayer() {
         padding: "20px",
       }}
     >
-      <h3>Type the given word within {timeLeft} seconds</h3>
-      <h1 style={{ fontSize: "4rem", marginBottom: "20px" }}>{currentWord}</h1>
+      <h3>Type the given word within 30 seconds</h3>
+      <h1
+        style={{ fontSize: "4rem", marginBottom: "20px", userSelect: "none" }}
+      >
+        {currentWord}
+      </h1>
       <TextField
         label="Start typing..."
         variant="outlined"
@@ -161,7 +178,7 @@ export default function MultiPlayer() {
           <div>
             <Button
               variant="contained"
-              color="secondary"
+              color="error"
               onClick={handleLeave}
               style={{ margin: "10px" }}
             >
@@ -171,6 +188,7 @@ export default function MultiPlayer() {
               variant="contained"
               onClick={handleReplayRequest}
               style={{ margin: "10px" }}
+              color="success"
             >
               Request Replay
             </Button>
