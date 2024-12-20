@@ -1,6 +1,6 @@
 import { Button, TextField } from "@mui/material";
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 const BACKEND_URL = import.meta.env.VITE_APP_BACKEND_URL;
 
 // Get me from BE
@@ -8,6 +8,7 @@ export default function SinglePlayer() {
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const difficulty = queryParams.get("difficulty");
+  const navigate = useNavigate();
 
   const [word, setWord] = useState("");
   const [timeLeft, setTimeLeft] = useState(0);
@@ -49,6 +50,10 @@ export default function SinglePlayer() {
     setUserInput("");
     setTimeLeft(getTimerDuration());
     setGameOver(false);
+  };
+
+  const handleLeave = () => {
+    navigate("/");
   };
 
   useEffect(() => {
@@ -106,6 +111,14 @@ export default function SinglePlayer() {
             <h2>Game Over! Final Score: {score}</h2>
             <Button variant="contained" color="success" onClick={startNewWord}>
               Start New Word
+            </Button>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={handleLeave}
+              style={{ margin: "10px" }}
+            >
+              Leave Game
             </Button>
           </div>
         )}
