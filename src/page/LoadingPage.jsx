@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Box, Button, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { initializeWebSocket, closeWebSocket } from "../socket"; // WebSocket manager
+import { initializeWebSocket, closeWebSocket } from "../socket";
 
 export default function LoadingPage() {
   const [socket, setSocket] = useState(null);
@@ -17,7 +17,7 @@ export default function LoadingPage() {
 
     socketInstance.on("sessionIdAssigned", ({ sessionId }) => {
       console.log(`Session ID received: ${sessionId}`);
-      localStorage.setItem("sessionId", sessionId); // Store session ID locally
+      localStorage.setItem("sessionId", sessionId);
     });
 
     socketInstance.on("playerStatus", (statuses) => {

@@ -74,7 +74,7 @@ export default function SinglePlayer() {
 
   useEffect(() => {
     fetchData();
-  }, [difficulty]);
+  }, []);
 
   return (
     <>
@@ -86,8 +86,8 @@ export default function SinglePlayer() {
         }}
       >
         <h3>
-          Type the given word within{" "}
-          {difficulty === "easy" ? 7 : difficulty === "medium" ? 5 : "3"}{" "}
+          Type the given word within
+          {difficulty === "easy" ? 7 : difficulty === "medium" ? 5 : "3"}
           seconds
         </h3>
         <h1 style={{ fontSize: "4rem" }}>{word}</h1>{" "}
