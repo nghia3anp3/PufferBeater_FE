@@ -6,6 +6,8 @@ import DifficultyPage from "./page/DifficultyPage";
 import SinglePlayer from "./page/SinglePlayer";
 import MultiPlayer from "./page/MultiPlayer";
 import LoadingPage from "./page/LoadingPage";
+import RegisterPage from "./page/RegisterPage";
+import LoginPage from "./page/LoginPage";
 
 function App() {
   const navigate = useNavigate();
@@ -19,6 +21,8 @@ function App() {
       <NavBar />
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/difficulty" element={<DifficultyPage />} />
         <Route path="/singleplayer" element={<SinglePlayer />} />
         <Route
