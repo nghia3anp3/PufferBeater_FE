@@ -1,59 +1,60 @@
 import { useEffect, useState } from "react";
 import { Box, Button, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { initializeWebSocket, closeWebSocket } from "../socket";
+import { initializeWebSocket, closeWebSocket, getWebSocket } from "../socket";
 
 export default function LoadingPage() {
-  const [socket, setSocket] = useState(null);
+  const [playerNumber, setPlayerNumber] = useState(null);
   const [status, setStatus] = useState({
     player1: false,
     player2: false,
   });
-  const [playerNumber, setPlayerNumber] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const socketInstance = initializeWebSocket();
+    const socket = initializeWebSocket();
 
-    socketInstance.on("sessionIdAssigned", ({ sessionId }) => {
+    socket.on("playerAssigned", (data) => {
+      setPlayerNumber(data.playerNumber);
+      console.log(data.playerNumber);
+      socket.playerNumber = data.playerNumber;
+    });
+
+    socket.on("sessionIdAssigned", ({ sessionId }) => {
       console.log(`Session ID received: ${sessionId}`);
       localStorage.setItem("sessionId", sessionId);
     });
 
-    socketInstance.on("playerStatus", (statuses) => {
+    socket.on("playerStatus", (statuses) => {
       setStatus(statuses);
     });
 
-    socketInstance.on("playerAssigned", (data) => {
-      setPlayerNumber(data.playerNumber);
+    socket.on("gameStart", () => {
+      navigate(`/multiplayer`);
     });
 
-    socketInstance.on("gameStart", (data) => {
-      navigate(`/multiplayer/${data.gameId}`);
+    socket.on("full", () => {
+      alert("the rooms is full");
+      navigate(`/`);
     });
-
-    setSocket(socketInstance);
 
     return () => {
-      socketInstance.off("sessionIdAssigned");
-      socketInstance.off("playerStatus");
-      socketInstance.off("playerAssigned");
-      socketInstance.off("gameStart");
-      closeWebSocket();
+      socket.off("sessionIdAssigned");
+      socket.off("playerStatus");
+      socket.off("playerAssigned");
     };
   }, [navigate]);
 
   const handleStartGame = () => {
-    if (socket) {
-      socket.emit("startGame");
-    }
+    const socket = getWebSocket();
+    socket.emit("startGame");
   };
 
   const handleLeave = () => {
-    if (socket) {
-      socket.emit("playerLeave");
-      closeWebSocket();
-    }
+    const socket = getWebSocket();
+    socket.emit("playerLeave");
+    closeWebSocket();
+
     navigate("/");
   };
 

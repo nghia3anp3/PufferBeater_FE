@@ -1,31 +1,29 @@
 import { Button, TextField } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { initializeWebSocket, closeWebSocket } from "../socket";
+import { closeWebSocket, getWebSocket } from "../socket";
+const BACKEND_URL = import.meta.env.VITE_APP_BACKEND_URL;
 
 export default function MultiPlayer() {
   const [playerNumber, setPlayerNumber] = useState(null);
   const [wordList, setWordList] = useState("");
   const [currentWord, setCurrentWord] = useState("");
-  const [timeLeft, setTimeLeft] = useState(30); // Initialize timeLeft
+  const [timeLeft, setTimeLeft] = useState(30);
   const [userInput, setUserInput] = useState("");
   const [gameOver, setGameOver] = useState(false);
   const [score, setScore] = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
-  const [replayCount, setReplayCount] = useState(0); // Tracker for rematch requests
-  const [socket, setSocket] = useState(null);
-
-  const BACKEND_URL = import.meta.env.VITE_APP_BACKEND_URL;
+  const [replayCount, setReplayCount] = useState(0);
 
   const navigate = useNavigate();
 
   const fetchWord = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/random-words`);
+      const response = await fetch(`${BACKEND_URL}/api/words/random`);
       const data = await response.json();
       if (data && data.length > 0) {
         const words = data.map((item) => item.word);
-        setWordList(words.word);
+        setWordList(words);
         setCurrentWord(words[0]);
       }
       setUserInput("");
@@ -36,6 +34,10 @@ export default function MultiPlayer() {
   };
 
   useEffect(() => {
+    const socket = getWebSocket();
+    setPlayerNumber(socket.playerNumber);
+    console.log(playerNumber);
+
     fetchWord();
     setGameOver(false);
   }, []);
@@ -47,9 +49,8 @@ export default function MultiPlayer() {
       setScore((prevScore) => {
         const newScore = prevScore + 1;
 
-        if (socket) {
-          socket.emit("scoreUpdate", { playerNumber, score: newScore });
-        }
+        const socket = getWebSocket();
+        socket.emit("scoreUpdate", { playerNumber, score: newScore });
 
         return newScore;
       });
@@ -59,74 +60,62 @@ export default function MultiPlayer() {
   };
 
   useEffect(() => {
-    const socketInstance = initializeWebSocket();
+    const socket = getWebSocket();
 
-    socketInstance.on("playerAssigned", (data) => {
-      setPlayerNumber(data.playerNumber);
-
-      if (data.playerNumber && playerNumber) {
-        console.log("Emitting startGame event...");
-        socketInstance.emit("startGame");
-      }
-    });
-
-    socketInstance.on("scoreUpdate", (data) => {
-      if (data.playerNumber !== playerNumber) {
+    socket.on("scoreUpdate", (data) => {
+      if (data.playerNumber === playerNumber) {
+        setScore(data.score);
+      } else {
         setOpponentScore(data.score);
       }
     });
 
-    socketInstance.on("replayStatus", (data) => {
-      setReplayCount(data.replayCount); // Update tracker for rematch requests
+    socket.on("replayStatus", (data) => {
+      setReplayCount(data.replayCount);
     });
 
-    socketInstance.on("gameRestart", () => {
+    socket.on("gameRestart", () => {
       setScore(0);
       setOpponentScore(0);
       setReplayCount(0);
       fetchWord();
     });
 
-    socketInstance.on("playerLeave", () => {
+    socket.on("playerLeave", () => {
       alert("Your opponent has left the game.");
       closeWebSocket();
-      navigate("/"); // Navigate both players to the home page
+      navigate("/");
     });
 
-    // Handle real-time timer updates
-    socketInstance.on("timeUpdate", ({ remainingTime }) => {
-      console.log(`Time update received: ${remainingTime}`); // Debug log
-      setTimeLeft(remainingTime); // Update the time left in real-time
+    socket.on("timeUpdate", ({ remainingTime }) => {
+      setTimeLeft(remainingTime);
     });
 
-    // Handle game over event
-    socketInstance.on("gameOver", ({ player1Score, player2Score }) => {
-      console.log("Game over event received:", { player1Score, player2Score });
+    socket.on("gameOver", ({ player1Score, player2Score }) => {
       setGameOver(true);
       if (playerNumber === 1) {
-        setScore(player1Score); // Your score if you're Player 1
-        setOpponentScore(player2Score); // Opponent's score if you're Player 1
+        setScore(player1Score);
+        setOpponentScore(player2Score);
       } else if (playerNumber === 2) {
-        setScore(player2Score); // Your score if you're Player 2
-        setOpponentScore(player1Score); // Opponent's score if you're Player 2
+        setScore(player2Score);
+        setOpponentScore(player1Score);
       }
     });
 
-    setSocket(socketInstance);
-
+    // Clean up listeners on unmount
     return () => {
-      socketInstance.off("playerAssigned");
-      socketInstance.off("scoreUpdate");
-      socketInstance.off("replayStatus");
-      socketInstance.off("gameRestart");
-      socketInstance.off("playerLeave");
-      socketInstance.off("timeUpdate");
-      socketInstance.off("gameOver");
-      closeWebSocket();
+      socket.off("playerAssigned");
+      socket.off("scoreUpdate");
+      socket.off("replayStatus");
+      socket.off("gameRestart");
+      socket.off("playerLeave");
+      socket.off("timeUpdate");
+      socket.off("gameOver");
     };
-  }, [playerNumber, navigate]);
+  }, [playerNumber]);
 
   const handleLeave = () => {
+    const socket = getWebSocket();
     if (socket) {
       socket.emit("playerLeave");
       closeWebSocket();
@@ -135,8 +124,9 @@ export default function MultiPlayer() {
   };
 
   const handleReplayRequest = () => {
+    const socket = getWebSocket();
     if (socket) {
-      socket.emit("playerReplay"); // Notify server of rematch request
+      socket.emit("playerReplay");
     }
   };
 

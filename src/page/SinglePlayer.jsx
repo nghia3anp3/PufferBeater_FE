@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 const BACKEND_URL = import.meta.env.VITE_APP_BACKEND_URL;
 
-// Get me from BE
 export default function SinglePlayer() {
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
@@ -18,31 +17,18 @@ export default function SinglePlayer() {
 
   const fetchData = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/random-words`);
+      const response = await fetch(`${BACKEND_URL}/api/words/random`);
       const randomWords = await response.json();
       const selectedWord =
         randomWords[Math.floor(Math.random() * randomWords.length)];
       setWord(selectedWord.word);
-      setTimeLeft(getTimerDuration());
-      setGameOver(false);
     } catch (error) {
       console.log("Error fetching data:", error);
     }
   };
 
   const getTimerDuration = () => {
-    if (difficulty === "easy") return 7;
-    if (difficulty === "medium") return 5;
-    return 3;
-  };
-
-  const handleInputChange = (event) => {
-    setUserInput(event.target.value);
-
-    if (event.target.value === word) {
-      setScore(score + 1);
-      startNewWord();
-    }
+    return difficulty === "easy" ? 7 : difficulty === "medium" ? 5 : 3;
   };
 
   const startNewWord = async () => {
@@ -52,15 +38,19 @@ export default function SinglePlayer() {
     setGameOver(false);
   };
 
+  const handleInputChange = (event) => {
+    const inputValue = event.target.value;
+    setUserInput(inputValue);
+
+    if (inputValue === word) {
+      setScore((prevScore) => prevScore + 1);
+      startNewWord();
+    }
+  };
+
   const handleLeave = () => {
     navigate("/");
   };
-
-  useEffect(() => {
-    if (timeLeft === 0) {
-      setGameOver(true);
-    }
-  }, [timeLeft]);
 
   useEffect(() => {
     if (timeLeft > 0) {
@@ -69,11 +59,13 @@ export default function SinglePlayer() {
       }, 1000);
 
       return () => clearInterval(timer);
+    } else {
+      setGameOver(true);
     }
   }, [timeLeft]);
 
   useEffect(() => {
-    fetchData();
+    startNewWord();
   }, []);
 
   return (

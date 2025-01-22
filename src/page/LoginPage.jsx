@@ -2,14 +2,15 @@ import { Button, TextField } from "@mui/material";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as Yup from "yup";
+import { useAuth } from "../contexts/AuthContext";
 const BACKEND_URL = import.meta.env.VITE_APP_BACKEND_URL;
 
 export default function LoginPage() {
   const [formValues, setFormValues] = useState({ username: "", password: "" });
   const [errors, setErrors] = useState({});
-  const [loginError, setLoginError] = useState("");
 
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const formContainerStyle = {
     display: "flex",
@@ -46,22 +47,24 @@ export default function LoginPage() {
     try {
       await formSchema.validate(formValues, { abortEarly: false });
       setErrors({});
-      setLoginError("");
 
-      const response = await fetch(`${BACKEND_URL}/login`, {
+      const response = await fetch(`${BACKEND_URL}/api/users/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formValues),
       });
 
       const data = await response.json();
+      console.log(data);
       if (response.ok) {
         console.log("Login successful:", data.message);
 
-        localStorage.setItem("authToken", data.token);
+        login(data.token, data.username);
         navigate("/");
       } else {
-        setLoginError(data.error || "Invalid username or password");
+        if (data.error === "Invalid username or password") {
+          setErrors({ username: data.error, password: data.error });
+        }
       }
     } catch (err) {
       const extractedErrors = {};

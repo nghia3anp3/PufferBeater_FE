@@ -8,28 +8,23 @@ import MultiPlayer from "./page/MultiPlayer";
 import LoadingPage from "./page/LoadingPage";
 import RegisterPage from "./page/RegisterPage";
 import LoginPage from "./page/LoginPage";
+import LeaderboardPage from "./page/LeaderboardPage";
+import HistoryPage from "./page/HistoryPage";
 
 function App() {
-  const navigate = useNavigate();
-
-  const handleGameStart = (gameId) => {
-    navigate(`/multiplayer/${gameId}`); // Navigate to multiplayer page with game ID
-  };
-
   return (
     <>
       <NavBar />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/leaderboard" element={<LeaderboardPage />} />
+        <Route path="/history" element={<HistoryPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/difficulty" element={<DifficultyPage />} />
         <Route path="/singleplayer" element={<SinglePlayer />} />
-        <Route
-          path="/loading"
-          element={<LoadingPage onGameStart={handleGameStart} />}
-        />
-        <Route path="/multiplayer/:gameId" element={<MultiPlayer />} />
+        <Route path="/loading" element={<LoadingPage />} />
+        <Route path="/multiplayer" element={<MultiPlayer />} />
       </Routes>
     </>
   );

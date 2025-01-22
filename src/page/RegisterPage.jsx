@@ -1,5 +1,6 @@
 import { Button, TextField } from "@mui/material";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import * as Yup from "yup";
 const BACKEND_URL = import.meta.env.VITE_APP_BACKEND_URL;
 
@@ -7,6 +8,7 @@ export default function RegisterPage() {
   const [formValues, setFormValues] = useState({ username: "", password: "" });
   const [errors, setErrors] = useState({});
 
+  const navigate = useNavigate();
   const formContainerStyle = {
     display: "flex",
     flexDirection: "column",
@@ -45,7 +47,7 @@ export default function RegisterPage() {
       console.log(formValues);
       console.log(JSON.stringify(formValues));
 
-      const response = await fetch(`${BACKEND_URL}/register`, {
+      const response = await fetch(`${BACKEND_URL}/api/users/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formValues),
@@ -54,8 +56,14 @@ export default function RegisterPage() {
       const data = await response.json();
       if (response.ok) {
         console.log("User registered successfully:", data.message);
+        alert("User registered successfully");
+        navigate("/login");
       } else {
-        console.error("Error registering user:", data.error);
+        if (data.error === "Username already exists") {
+          setErrors({ username: data.error });
+        } else {
+          console.error("Error registering user:", data.error);
+        }
       }
     } catch (err) {
       const extractedErrors = {};

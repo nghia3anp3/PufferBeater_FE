@@ -30,3 +30,8 @@ body {
   font-size: 24px;
   animation: wiggle 0.8s ease-in-out infinite;
 }
+
+.header-style {
+  font-size: 50px;
+  user-select: none;
+}

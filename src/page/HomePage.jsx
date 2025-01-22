@@ -17,6 +17,15 @@ export default function HomePage() {
     fontFamily: "Comic Neue, cursive",
   };
 
+  const handleLoading = () => {
+    if (localStorage.getItem("user")) {
+      navigate("/loading");
+    } else {
+      alert("You must login");
+      navigate("/login");
+    }
+  };
+
   return (
     <>
       <h1
@@ -56,11 +65,11 @@ export default function HomePage() {
         </div>
         <div style={styleDescription}>
           <Button
-            onClick={() => navigate("/loading")}
+            onClick={handleLoading}
             style={styleButton}
             className="wiggle-text"
           >
-            Multi player
+            Multiplayer
           </Button>
 
           <h2>
