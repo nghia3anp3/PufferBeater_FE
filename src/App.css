@@ -2,7 +2,7 @@ body {
   font-family: "Comic Neue", cursive;
   margin: 0px;
   border: 0px;
-  background-image: url("2.png");
+  background-image: url("../public/1.png");
 }
 
 @keyframes wiggle {
