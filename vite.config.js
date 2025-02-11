@@ -4,6 +4,6 @@ import react from "@vitejs/plugin-react-swc";
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5173, // Cổng cho môi trường development
+    port: 5173,
   },
 });
